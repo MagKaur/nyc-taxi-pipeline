@@ -1,0 +1,6 @@
+pyspark==3.5.1
+delta-spark==3.2.0
+dagster==1.11.15
+dagster-webserver==1.11.15
+pandas
+pyarrow

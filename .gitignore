@@ -1,0 +1,64 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# =========================
+# PyCharm / IDE
+# =========================
+.idea/
+*.iml
+
+# =========================
+# Data (ETL / Spark)
+# =========================
+data/raw/*
+data/warehouse/*
+!data/raw/.gitkeep
+!data/warehouse/.gitkeep
+
+# Parquet / temp files
+*.parquet
+*.crc
+
+# =========================
+# Spark / Hadoop temp
+# =========================
+spark-warehouse/
+metastore_db/
+
+# Hadoop / Windows
+hadoop/
+C:/hadoop/
+
+# =========================
+# Dagster
+# =========================
+.tmp_dagster_home_*/
+dagster_home/
+
+# =========================
+# Environment variables
+# =========================
+.env
+
+# =========================
+# System files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Misc
+# =========================
+*.tmp
+*.bak
