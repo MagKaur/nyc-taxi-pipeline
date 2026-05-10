@@ -1,10 +1,48 @@
-from dagster import Definitions, define_asset_job
-from dagster_project.assets import bronze_load, silver_transform, gold_metrics, quality_checks, queue_sensor
+from pathlib import Path
 
-etl_job = define_asset_job("etl_job")
+import dagster as dg
 
-defs = Definitions(
-    assets=[bronze_load, silver_transform, gold_metrics, quality_checks],
+from dagster_project.assets import (
+    queue_ingestion,
+    bronze_load,
+    silver_transform,
+    gold_metrics,
+    quality_checks,
+)
+
+
+etl_job = dg.define_asset_job(
+    name="etl_job",
+    selection=dg.AssetSelection.all(),
+)
+
+
+@dg.sensor(job=etl_job)
+def queue_sensor():
+    queue_path = Path("data/queue")
+
+    files = list(queue_path.glob("*"))
+
+    if not files:
+        yield dg.SkipReason("No files in data/queue.")
+        return
+
+    run_key = "|".join(sorted(file.name for file in files))
+
+    yield dg.RunRequest(
+        run_key=run_key,
+        run_config={},
+    )
+
+
+defs = dg.Definitions(
+    assets=[
+        queue_ingestion,
+        bronze_load,
+        silver_transform,
+        gold_metrics,
+        quality_checks,
+    ],
+    jobs=[etl_job],
     sensors=[queue_sensor],
-    jobs=[etl_job]
 )

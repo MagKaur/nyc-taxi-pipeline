@@ -41,6 +41,11 @@ def _run_stage(stage: str) -> None:
 
 
 @dg.asset
+def queue_ingestion():
+    _run_stage("queue")
+
+
+@dg.asset(deps=[queue_ingestion])
 def bronze_load():
     _run_stage("bronze")
 
@@ -58,13 +63,3 @@ def gold_metrics():
 @dg.asset(deps=[gold_metrics])
 def quality_checks():
     _run_stage("quality")
-
-@dg.sensor(job=dg.define_asset_job("etl_job"))
-def queue_sensor():
-    queue_path = Path("data/queue")
-
-    if any(queue_path.glob("*")):
-        yield dg.RunRequest(
-            run_key=None,
-            run_config={}
-        )
