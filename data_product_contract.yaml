@@ -1,0 +1,170 @@
+product_name: NYC Yellow Taxi Analytics
+
+product_purpose: >
+  Produkt danych dostarcza przetworzone dane dotyczące przejazdów NYC Yellow Taxi.
+  Dane są przygotowane do analiz liczby przejazdów, przychodów, średniego dystansu
+  oraz relacji pomiędzy strefą początkową i końcową przejazdu.
+
+data_sources:
+  - data/raw/yellow_tripdata_*.parquet
+  - data/raw/taxi_zone_lookup.csv
+
+pipeline_architecture:
+  orchestration: Dagster
+  processing_engine: PySpark
+  storage_format: Parquet
+  storage: Local filesystem
+  layers:
+    - queue
+    - bronze
+    - silver
+    - gold
+
+refresh_frequency: Po każdym uruchomieniu pipeline
+
+access_method:
+  type: Lokalne pliki Parquet
+  paths:
+    main_data_product: data/warehouse/gold/taxi_metrics/
+    silver_clean_data: data/warehouse/silver/yellow_taxi_clean/
+    silver_lookup_data: data/warehouse/silver/taxi_zone_lookup/
+
+datasets:
+  taxi_metrics:
+    layer: gold
+    path: data/warehouse/gold/taxi_metrics/
+    description: Główny produkt danych. Zagregowane metryki biznesowe przejazdów taxi.
+    format: parquet
+    schema:
+      - name: gold_record_id
+        type: string
+        description: Stabilny identyfikator rekordu gold wygenerowany jako hash.
+      - name: month
+        type: timestamp
+        description: Miesiąc rozpoczęcia przejazdu.
+      - name: pickup_zone
+        type: string
+        description: Nazwa strefy rozpoczęcia przejazdu.
+      - name: dropoff_zone
+        type: string
+        description: Nazwa strefy zakończenia przejazdu.
+      - name: trip_count
+        type: long
+        description: Liczba przejazdów.
+      - name: total_revenue
+        type: double
+        description: Suma przychodów z przejazdów.
+      - name: avg_distance
+        type: double
+        description: Średni dystans przejazdu.
+
+  yellow_taxi_clean:
+    layer: silver
+    path: data/warehouse/silver/yellow_taxi_clean/
+    description: Oczyszczone i zwalidowane dane przejazdów taxi.
+    format: parquet
+    schema:
+      - name: trip_id
+        type: string
+        description: Stabilny identyfikator przejazdu wygenerowany jako hash.
+      - name: pickup_datetime
+        type: timestamp
+        description: Data i czas rozpoczęcia przejazdu.
+      - name: dropoff_datetime
+        type: timestamp
+        description: Data i czas zakończenia przejazdu.
+      - name: pickup_month
+        type: timestamp
+        description: Miesiąc rozpoczęcia przejazdu.
+      - name: trip_duration_minutes
+        type: double
+        description: Czas trwania przejazdu w minutach.
+      - name: trip_distance
+        type: double
+        description: Długość przejazdu w milach.
+      - name: total_amount
+        type: double
+        description: Całkowita kwota przejazdu.
+      - name: pulocationid
+        type: integer
+        description: Identyfikator strefy rozpoczęcia przejazdu.
+      - name: dolocationid
+        type: integer
+        description: Identyfikator strefy zakończenia przejazdu.
+      - name: payment_type
+        type: integer
+        description: Typ płatności.
+      - name: is_valid_record
+        type: boolean
+        description: Flaga informująca, czy rekord spełnia reguły jakości danych.
+
+  taxi_zone_lookup:
+    layer: silver
+    path: data/warehouse/silver/taxi_zone_lookup/
+    description: Słownik stref taxi używany do mapowania identyfikatorów lokalizacji.
+    format: parquet
+    schema:
+      - name: locationid
+        type: integer
+        description: Identyfikator strefy taxi.
+      - name: borough
+        type: string
+        description: Dzielnica Nowego Jorku.
+      - name: zone
+        type: string
+        description: Nazwa strefy taxi.
+      - name: service_zone
+        type: string
+        description: Typ strefy obsługi.
+
+quality_metrics:
+
+  - metric_name: Invalid time records
+    definition: >
+      Liczba rekordów, w których data zakończenia przejazdu
+      jest wcześniejsza niż data rozpoczęcia przejazdu.
+    current_value: 5
+    expected_threshold: "< 100"
+    update_cadence: Po każdym uruchomieniu pipeline
+
+  - metric_name: Negative values
+    definition: >
+      Liczba rekordów posiadających ujemny dystans
+      lub ujemną wartość total_amount.
+    current_value: 116144
+    expected_threshold: "< 200000"
+    update_cadence: Po każdym uruchomieniu pipeline
+
+  - metric_name: Missing location lookup
+    definition: >
+      Liczba rekordów bez poprawnego mapowania
+      do taxi zone lookup table.
+    current_value: 0
+    expected_threshold: "0"
+    update_cadence: Po każdym uruchomieniu pipeline
+
+  - metric_name: Invalid records in silver
+    definition: >
+      Liczba rekordów oznaczonych jako is_valid_record = false
+      w warstwie silver.
+    current_value: 116148
+    expected_threshold: "< 200000"
+    update_cadence: Po każdym uruchomieniu pipeline
+
+known_limitations:
+  - Dane źródłowe zawierają część błędnych rekordów, np. wartości ujemne lub niepoprawne znaczniki czasu.
+  - Produkt działa lokalnie na plikach Parquet.
+  - Pipeline nie udostępnia jeszcze danych przez bazę danych ani API.
+  - Brak streamingu w czasie rzeczywistym.
+  - Wyniki zależą od jakości danych źródłowych NYC TLC.
+
+example_usage:
+  python:
+    from pyspark.sql import SparkSession
+
+    spark = SparkSession.builder.appName("read_taxi_metrics").getOrCreate()
+
+    df = spark.read.parquet("data/warehouse/gold/taxi_metrics")
+    df.show()
+
+    spark.stop()

@@ -233,6 +233,50 @@ W projekcie zaimplementowano:
 
 
 ---
+# Data Product
+
+## Opis produktu
+
+NYC Yellow Taxi Analytics to produkt danych oparty o dane NYC Yellow Taxi.
+Pipeline został zbudowany z użyciem Apache Spark oraz Dagster
+i wykorzystuje architekturę Bronze / Silver / Gold.
+
+Produkt umożliwia:
+- analizę liczby przejazdów,
+- analizę przychodów,
+- analizę aktywności pasażerów,
+- analizę wykorzystania stref taxi.
+
+## Architektura pipeline
+
+- Bronze — surowe dane
+- Silver — dane oczyszczone i zwalidowane
+- Gold — zagregowane metryki biznesowe
+
+## Uruchamianie pipeline
+
+```bash
+dagster dev -f .\dagster_project\definitions.py
+```
+
+## Data Product Contract
+
+Specyfikacja produktu danych znajduje się w pliku:
+```text
+data_product_contract.yaml
+```
+
+Główny produkt danych znajduje się w:
+```text
+data/warehouse/gold/taxi_metrics/
+```
+
+Produkt można odczytać jako pliki Parquet, np. za pomocą PySpark.
+
+Karta produktu danych znajduje się w katalogu:
+```text
+docs/data_product_card.pdf
+```
 
 ## Podsumowanie
 
