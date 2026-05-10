@@ -5,6 +5,7 @@ from bronze import run_bronze
 from silver import run_silver
 from gold import run_gold
 from quality_check import run_quality_checks
+from queue_ingestion import move_files_from_queue
 
 
 def build_spark():
@@ -21,7 +22,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument(
         "--stage",
-        choices=["bronze", "silver", "gold", "quality", "all"],
+        choices=["bronze", "silver", "gold", "quality", "queue", "all"],
         required=True
     )
     parser.add_argument("--base-path", default="data/warehouse")
@@ -42,9 +43,11 @@ def main():
 
         if args.stage in ("quality", "all"):
             run_quality_checks(spark, args.base_path)
+
+        if args.stage in ("queue", "all"):
+            move_files_from_queue("data/queue", args.raw_path)
     finally:
         spark.stop()
-
 
 if __name__ == "__main__":
     main()

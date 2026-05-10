@@ -8,12 +8,28 @@ Projekt przedstawia kompletny pipeline ETL dla danych NYC Taxi, zbudowany w arch
 * Dagster – orkiestracja pipeline’u
 * Parquet – format danych
 * Lokalny filesystem jako storage
+* System kolejkowania plików (file-based queue) – incremental ingestion
+* Dagster Sensors – automatyczne wyzwalanie pipeline’u
 
 Pipeline jest idempotentny i może być uruchamiany wielokrotnie bez duplikacji danych.
 
 ---
 
 ## Architektura
+
+### Queue
+
+* System kolejkowania oparty o pliki
+* Incrementalne ładowanie danych
+* Automatyczne wykrywanie nowych plików przez Dagster Sensor
+
+Input:
+
+data/queue/
+
+Output:
+
+data/raw/
 
 Pipeline składa się z 3 warstw:
 
@@ -135,11 +151,15 @@ http://127.0.0.1:3000
    * quality_checks
 3. Kliknij "Materialize selected"
 
+Dagster może również automatycznie uruchamiać pipeline po wykryciu nowych plików w katalogu `data/queue/`.
+
 ---
 
 ## Lineage pipeline
 
 ```
+queue_ingestion
+     ↓
 bronze_load
      ↓
 silver_transform
@@ -179,6 +199,7 @@ W projekcie zaimplementowano:
 ```
 .
 ├── data/
+│   ├── queue/
 │   ├── raw/
 │   └── warehouse/
 │       ├── bronze/
@@ -187,9 +208,11 @@ W projekcie zaimplementowano:
 │
 ├── spark_jobs/
 │   ├── main.py
+│   ├── queue_ingestion.py
 │   ├── bronze.py
 │   ├── silver.py
 │   ├── gold.py
+│   ├── quality_checks.py
 │
 ├── dagster_project/
 │   ├── definitions.py
@@ -204,9 +227,10 @@ W projekcie zaimplementowano:
 ## Możliwe rozszerzenia
 
 * przetwarzanie strumieniowe
-* system kolejkowania (np. Kafka)
-* incremental loading
-* automatyczne wyzwalanie pipeline’u (Airflow)
+* integracja z Apache Kafka
+* Spark Structured Streaming
+* integracja z chmurą (AWS/GCP/Azure)
+
 
 ---
 
@@ -219,3 +243,5 @@ Projekt implementuje:
 * przetwarzanie w Spark
 * orkiestrację w Dagster
 * idempotentne przetwarzanie danych
+* system kolejkowania danych wejściowych
+* automatyczne wyzwalanie pipeline’u
