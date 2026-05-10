@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -8,6 +9,9 @@ import dagster as dg
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MAIN_SCRIPT = PROJECT_ROOT / "spark_jobs" / "main.py"
+
+QUEUE_PATH = PROJECT_ROOT / "data" / "queue"
+RAW_PATH = PROJECT_ROOT / "data" / "raw"
 
 
 def _build_env() -> dict:
@@ -42,7 +46,23 @@ def _run_stage(stage: str) -> None:
 
 @dg.asset
 def queue_ingestion():
-    _run_stage("queue")
+    QUEUE_PATH.mkdir(parents=True, exist_ok=True)
+    RAW_PATH.mkdir(parents=True, exist_ok=True)
+
+    files = [
+        p for p in QUEUE_PATH.iterdir()
+        if p.is_file() and p.name != ".gitkeep"
+    ]
+
+    for file in files:
+        target = RAW_PATH / file.name
+
+        if target.exists():
+            file.unlink()
+        else:
+            shutil.move(str(file), str(target))
+
+    print(f"Moved {len(files)} files from queue to raw")
 
 
 @dg.asset(deps=[queue_ingestion])

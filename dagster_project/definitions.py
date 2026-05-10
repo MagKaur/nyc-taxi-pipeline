@@ -21,7 +21,10 @@ etl_job = dg.define_asset_job(
 def queue_sensor():
     queue_path = Path("data/queue")
 
-    files = list(queue_path.glob("*"))
+    files = [
+        p for p in queue_path.iterdir()
+        if p.is_file() and p.name != ".gitkeep"
+    ]
 
     if not files:
         yield dg.SkipReason("No files in data/queue.")
